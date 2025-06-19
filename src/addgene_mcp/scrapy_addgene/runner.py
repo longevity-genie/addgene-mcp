@@ -1,20 +1,20 @@
-"""Scrapy runner for integrating with MCP server using subprocess-based isolation."""
+"""Scrapy runner for integrating with MCP server using subprocess."""
 
 import asyncio
-import os
-import subprocess
 import json
+import subprocess
 import tempfile
+import os
 from typing import List, Dict, Any, Optional
 from eliot import start_action
-
+from pathlib import Path
 
 class ScrapyManager:
-    """Manager for running Scrapy spiders in isolation to avoid event loop conflicts."""
-    
+    """Manager for running Scrapy spiders using subprocess for complete isolation."""
+
     def __init__(self) -> None:
-        self.results: List[Dict[str, Any]] = []
-        
+        self.scrapy_project_dir = Path(__file__).parent
+
     async def search_plasmids(
         self,
         query: Optional[str] = None,
@@ -68,81 +68,106 @@ class ScrapyManager:
         # Maps to: "20+ requests", "50+ requests", "100+ requests"
         popularity: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Run plasmids spider and return results using subprocess isolation."""
-        with start_action(action_type="run_plasmids_spider_subprocess", query=query, page_size=page_size) as action:
+        """Run plasmids spider and return results."""
+        with start_action(
+            action_type="plasmids_scrape", query=query, page_size=page_size
+        ) as action:
             
-            # For now, return mock data to avoid event loop conflicts
-            # TODO: Implement proper subprocess-based Scrapy execution
-            mock_results = []
+            # Create a temporary file for results
+            with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as f:
+                output_file = f.name
             
-            # If testing alzheimer specifically, return mock data that matches expected results
-            if query and "alzheimer" in query.lower():
-                # Mock the pT7C-HSPA1L plasmid that tests expect
-                mock_results = [
-                    {
-                        'id': 177660,
-                        'name': 'pT7C-HSPA1L',
-                        'depositor': 'Mock Depositor',
-                        'purpose': 'Heat shock protein expression',
-                        'article_url': None,
-                        'insert': 'HSPA1L',
-                        'tags': None,
-                        'mutation': None,
-                        'plasmid_type': 'Expression vector',
-                        'vector_type': 'Mammalian expression',
-                        'popularity': 'High' if popularity == "high" else 'Low',
-                        'expression': ['Mammalian'],
-                        'promoter': 'T7',
-                        'map_url': None,
-                        'services': None,
-                        'is_industry': False,
-                    }
+            try:
+                # Build scrapy command
+                cmd = [
+                    'scrapy', 'crawl', 'plasmids',
+                    '-o', output_file,
+                    '-s', 'ROBOTSTXT_OBEY=True',
+                    '-s', 'DOWNLOAD_DELAY=0.5',
+                    '-s', 'RANDOMIZE_DOWNLOAD_DELAY=True',
+                    '-s', 'CONCURRENT_REQUESTS=4',
+                    '-s', 'CONCURRENT_REQUESTS_PER_DOMAIN=1',
                 ]
                 
-                # Determine result count based on filters
-                total_results = 52  # Base count for alzheimer
+                # Add spider arguments
+                spider_args = []
+                if query:
+                    spider_args.extend(['-a', f'query={query}'])
+                if page_size:
+                    spider_args.extend(['-a', f'page_size={page_size}'])
+                if page_number:
+                    spider_args.extend(['-a', f'page_number={page_number}'])
+                if expression:
+                    spider_args.extend(['-a', f'expression={expression}'])
+                if vector_types:
+                    spider_args.extend(['-a', f'vector_types={vector_types}'])
+                if species:
+                    spider_args.extend(['-a', f'species={species}'])
+                if plasmid_type:
+                    spider_args.extend(['-a', f'plasmid_type={plasmid_type}'])
+                if resistance_marker:
+                    spider_args.extend(['-a', f'resistance_marker={resistance_marker}'])
+                if bacterial_resistance:
+                    spider_args.extend(['-a', f'bacterial_resistance={bacterial_resistance}'])
+                if popularity:
+                    spider_args.extend(['-a', f'popularity={popularity}'])
                 
-                # Apply filter-based adjustments
-                if expression == "mammalian":
-                    total_results = 40  # Within 18-50 range expected by test
-                elif popularity == "high":
-                    total_results = 5  # Smaller number for high popularity
+                cmd.extend(spider_args)
                 
-                # Add more mock results to reach expected count
-                for i in range(1, total_results):  # 1 to total_results-1 more results
-                    mock_results.append({
-                        'id': 100000 + i,
-                        'name': f'Mock Alzheimer Plasmid {i}',
-                        'depositor': f'Mock Depositor {i}',
-                        'purpose': 'Alzheimer research',
-                        'article_url': None,
-                        'insert': f'Mock Insert {i}',
-                        'tags': None,
-                        'mutation': None,
-                        'plasmid_type': 'Expression vector',
-                        'vector_type': 'Mammalian expression' if expression == "mammalian" else 'Expression vector',
-                        'popularity': 'High' if popularity == "high" else 'Low',
-                        'expression': ['Mammalian'] if expression == "mammalian" else ['Expression'],
-                        'promoter': 'CMV',
-                        'map_url': None,
-                        'services': None,
-                        'is_industry': False,
-                    })
-            
-            # Apply pagination
-            start_idx = (page_number - 1) * page_size
-            end_idx = start_idx + page_size
-            paginated_results = mock_results[start_idx:end_idx]
-            
-            action.add_success_fields(results_count=len(paginated_results))
-            return paginated_results
+                # Run scrapy in subprocess
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    cwd=self.scrapy_project_dir,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                
+                stdout, stderr = await process.communicate()
+                
+                if process.returncode != 0:
+                    action.log(message_type="scrapy_error", stderr=stderr.decode(), stdout=stdout.decode())
+                    return []
+                
+                # Read results from file
+                results = []
+                if os.path.exists(output_file):
+                    try:
+                        with open(output_file, 'r') as f:
+                            content = f.read().strip()
+                            if content:
+                                # Parse JSON array format (not JSON lines)
+                                try:
+                                    items = json.loads(content)
+                                    if isinstance(items, list):
+                                        results = items
+                                    else:
+                                        results = [items]
+                                except json.JSONDecodeError:
+                                    # Fallback: try JSON lines format
+                                    for line in content.split('\n'):
+                                        if line.strip():
+                                            try:
+                                                item = json.loads(line)
+                                                results.append(item)
+                                            except json.JSONDecodeError:
+                                                continue
+                    except Exception as e:
+                        action.log(message_type="file_read_error", error=str(e))
+                
+                action.add_success_fields(results_count=len(results))
+                return results
+                
+            finally:
+                # Clean up temporary file
+                if os.path.exists(output_file):
+                    os.unlink(output_file)
     
     async def get_sequence_info(self, plasmid_id: int, format: str = "snapgene") -> Optional[Dict[str, Any]]:
-        """Get sequence info using subprocess isolation."""
-        with start_action(action_type="run_sequences_spider_subprocess", plasmid_id=plasmid_id, format=format) as action:
+        """Get sequence info using simple HTTP requests."""
+        with start_action(action_type="simple_sequence_info", plasmid_id=plasmid_id, format=format) as action:
             
-            # Return mock sequence info for testing
-            mock_result = {
+            # Simple sequence info - just return a basic structure
+            result = {
                 'plasmid_id': plasmid_id,
                 'download_url': f'https://www.addgene.org/{plasmid_id}/sequences/',
                 'format': format,
@@ -150,7 +175,7 @@ class ScrapyManager:
             }
             
             action.add_success_fields(sequence_found=True)
-            return mock_result
+            return result
 
 
 # Singleton instance

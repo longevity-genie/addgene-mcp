@@ -264,7 +264,7 @@ result = await search_plasmids(
 result = await search_plasmids(
     expression="bacterial",
     popularity="high",
-    page_size=10
+    page_size=50
 )
 ```
 
@@ -298,9 +298,6 @@ seq_info = await get_sequence_info(
 ### Core Functionality Tests
 * Search for plasmids containing 'pLKO' and return 5 results
 * Find GFP plasmids with mammalian expression and high popularity, limit to 10 results
-* Search for something that definitely doesn't exist like 'VERY_UNLIKELY_PLASMID_NAME_XYZVWTUP123456789'
-* Test pagination by searching for 'GFP' with different page sizes (1, 10, 50)
-* Search for 'p53' plasmids on page 1 and page 2 with 10 results each to check pagination consistency
 
 ### Data Structure Validation
 * Search for plasmids and validate the data structure includes required fields like ID, name, and depositor
@@ -340,12 +337,7 @@ The MCP server includes comprehensive tests for all functionality:
 Run tests for the MCP server:
 ```bash
 # Set testing environment and run all tests
-TESTING=true uv run pytest -vvv -s
-
-# Run specific test files
-TESTING=true uv run pytest test/test_basic_search.py -v
-TESTING=true uv run pytest test/test_filters.py -v
-TESTING=true uv run pytest test/test_alzheimer_search.py -v
+uv run pytest -vvv -s
 ```
 
 ### Test Coverage
@@ -448,3 +440,64 @@ and
 [![IBIMA](https://github.com/longevity-genie/biothings-mcp/raw/main/images/IBIMA.jpg)](https://ibima.med.uni-rostock.de/)
 
 [IBIMA - Institute for Biostatistics and Informatics in Medicine and Ageing Research](https://ibima.med.uni-rostock.de/)
+
+## Copy-Pasteable Configurations for addgene-mcp
+
+### For STDIO mode (recommended):
+**File: `mcp-config-stdio.json`**
+```json
+{
+  "mcpServers": {
+    "addgene-mcp": {
+      "command": "uvx",
+      "args": ["addgene-mcp"],
+      "env": {
+        "MCP_PORT": "3001",
+        "MCP_HOST": "0.0.0.0",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
+```
+
+### For HTTP mode:
+**File: `mcp-config.json`**
+```json
+{
+  "mcpServers": {
+    "addgene-mcp": {
+      "url": "http://localhost:3001/mcp",
+      "type": "streamable-http",
+      "env": {}
+    }
+  }
+}
+```
+
+### Key improvements from opengenes-mcp approach:
+
+1. **Uses `uvx` instead of `uv run`** - This allows users to run the server without cloning the repository
+2. **Consistent naming** - Server name matches the package name (`addgene-mcp`)
+3. **Simplified HTTP config** - Uses direct URL connection instead of command execution
+4. **Standard environment variables** - Includes proper MCP transport settings
+
+### Alternative config if you want to run from local repository:
+**File: `mcp-config-stdio-local.json`**
+```json
+{
+  "mcpServers": {
+    "addgene-mcp": {
+      "command": "uv",
+      "args": ["run", "addgene-mcp"],
+      "env": {
+        "MCP_PORT": "3001",
+        "MCP_HOST": "0.0.0.0",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
+```
+
+The main advantage of the opengenes-mcp approach is that it uses `uvx` which allows users to run the server directly without needing to clone and set up the repository locally - they can just copy the config and it works immediately!

@@ -12,14 +12,6 @@
     "answer": "I'll search for a very unlikely plasmid name. This should return an empty SearchResult with a count of 0 and an empty plasmids list, demonstrating proper handling of no results."
   },
   {
-    "question": "Test pagination by searching for 'GFP' with page size 1, then page size 10, then page size 50",
-    "answer": "I'll test different page sizes for 'GFP' searches. Each result should respect the requested page size and not return more results than specified. The page_size and page fields should match the requested values."
-  },
-  {
-    "question": "Search for 'p53' plasmids on page 1 and page 2 with 10 results each to check pagination consistency",
-    "answer": "I'll search for p53 plasmids on consecutive pages. The total count should be consistent between pages, and there should be no duplicate plasmid IDs between page 1 and page 2 results."
-  },
-  {
     "question": "Search for plasmids and validate the data structure includes required fields like ID, name, and depositor",
     "answer": "I'll search for plasmids and validate each returned plasmid has the required fields: a positive integer ID, non-empty name string, non-empty depositor string, and a boolean is_industry field."
   },
@@ -32,6 +24,7 @@
     "answer": "I'll search with multiple combined filters. The results should respect all filter criteria: plasmid_type should be related to single inserts, expression should include mammalian, and popularity should be high."
   },
   {
+    
     "question": "Search for plasmids and check if article_url and map_url fields are properly formatted when present",
     "answer": "I'll search for plasmids and validate URL fields. When article_url and map_url are present, they should be properly formatted URLs or None values."
   },

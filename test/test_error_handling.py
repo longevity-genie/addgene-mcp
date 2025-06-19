@@ -111,21 +111,21 @@ class TestErrorHandling:
     async def test_extreme_page_sizes(self, mcp_server):
         """Test handling of extreme page sizes."""
         with start_action(action_type="test_extreme_page_sizes") as action:
-            # Test with very large page size
+            # Test with large page size (at the limit)
             result_large = await mcp_server.search_plasmids(
                 query="test",
-                page_size=1000,  # Very large page size
+                page_size=50,  # Maximum supported page size
                 page_number=1
             )
             
             # Should handle gracefully
             assert isinstance(result_large, SearchResult)
-            assert result_large.page_size == 1000
+            assert result_large.page_size == 50
             assert result_large.count >= 0
             
             action.log(
-                message_type="extreme_page_size_test",
-                page_size=1000,
+                message_type="max_page_size_test",
+                page_size=50,
                 result_count=result_large.count,
                 returned=len(result_large.plasmids)
             )

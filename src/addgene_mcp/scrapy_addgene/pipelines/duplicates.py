@@ -27,6 +27,7 @@ class DuplicatesPipeline:
         """Check for duplicate plasmid items."""
         plasmid_id = item.get('id')
         
+        
         if plasmid_id in self.ids_seen:
             action.log(message_type="duplicate_plasmid", id=plasmid_id)
             raise DropItem(f"Duplicate plasmid: {plasmid_id}")

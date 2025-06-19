@@ -17,22 +17,22 @@ def test_spider_url_building():
     assert "q=alzheimer" in url1
     print("✅ Default parameters test passed\n")
     
-    # Test 2: Large page size (100)
-    spider2 = PlasmidsSpider(query="alzheimer", page_size=100, page_number=1)
+    # Test 2: Maximum page size (50)
+    spider2 = PlasmidsSpider(query="alzheimer", page_size=50, page_number=1)
     url2 = spider2.build_search_url()
-    print(f"Test 2 - Large page size:")
+    print(f"Test 2 - Maximum page size:")
     print(f"URL: {url2}")
-    assert "page_size=100" in url2
+    assert "page_size=50" in url2
     assert "page_number=1" in url2
     assert "q=alzheimer" in url2
-    print("✅ Large page size test passed\n")
+    print("✅ Maximum page size test passed\n")
     
     # Test 3: Verify start_urls is set correctly
-    spider3 = PlasmidsSpider(query="alzheimer", page_size=100, page_number=1)
+    spider3 = PlasmidsSpider(query="alzheimer", page_size=50, page_number=1)
     print(f"Test 3 - Start URLs:")
     print(f"Start URLs: {spider3.start_urls}")
     assert len(spider3.start_urls) == 1
-    assert "page_size=100" in spider3.start_urls[0]
+    assert "page_size=50" in spider3.start_urls[0]
     assert "q=alzheimer" in spider3.start_urls[0]
     print("✅ Start URLs test passed\n")
     

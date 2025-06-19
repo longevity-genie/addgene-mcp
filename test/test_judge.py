@@ -115,6 +115,7 @@ GENERATED ANSWER: {generated_answer}
         print(f"Reference Answer: {reference_answer}")
         print(f"Current Answer: {generated_answer}")
         print(f"Judge Result: {judge_result}")
+        judge_agent.memory.pretty_print_all_messages()
         print(f"===================")
     
     assert "PASS" in judge_result, f"Judge failed for question: {question}" 

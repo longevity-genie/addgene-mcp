@@ -5,7 +5,7 @@ from urllib.parse import urljoin, urlparse, parse_qs
 from typing import Optional, Dict, Any, List
 from eliot import start_action
 
-from addgene_mcp.scrapy_addgene.items import PlasmidItem, SequenceItem
+from addgene_mcp.scrapy_addgene.items import PlasmidItem
 
 
 class PlasmidsSpider(scrapy.Spider):
@@ -41,12 +41,14 @@ class PlasmidsSpider(scrapy.Spider):
                  bacterial_resistance: Optional[str] = None,
                  # Popularity Filters - "low", "medium", "high"
                  popularity: Optional[str] = None,
+                 results_list: Optional[List] = None,
                  **kwargs):
         """Initialize spider with search parameters."""
         super().__init__(**kwargs)
         self.query = query
         self.page_size = page_size
         self.page_number = page_number
+        self.results_list = results_list
         
         # Store all filter parameters
         self.search_params = {
@@ -95,10 +97,11 @@ class PlasmidsSpider(scrapy.Spider):
             for entry in plasmid_entries:
                 plasmid_item = self.parse_plasmid_entry(entry, response)
                 if plasmid_item:
+                    if self.results_list is not None:
+                        self.results_list.append(dict(plasmid_item))
                     yield plasmid_item
             
-            # Handle pagination if needed
-            # Note: Based on the original code, pagination might not work well beyond 12000 results
+            # Handle pagination
             next_page = response.css('a.next-page::attr(href)').get()
             if next_page:
                 yield response.follow(next_page, callback=self.parse)
@@ -106,86 +109,95 @@ class PlasmidsSpider(scrapy.Spider):
     def parse_plasmid_entry(self, entry, response) -> Optional[PlasmidItem]:
         """Parse a single plasmid entry from search results."""
         with start_action(action_type="parse_plasmid_entry") as action:
-            try:
-                # Extract plasmid ID from div id attribute (most reliable)
-                entry_id = entry.css('::attr(id)').get()
-                plasmid_id = None
-                if entry_id and entry_id.startswith('Plasmids-'):
-                    try:
-                        plasmid_id = int(entry_id.split('-')[1])
-                    except (ValueError, IndexError):
-                        pass
-                
-                # Extract plasmid name and URL - the structure is h3 > span > a
-                title_link = entry.css('h3.search-result-title span a')
-                
-                if not title_link:
-                    action.log(message_type="missing_title_link")
-                    return None
-                
-                plasmid_name = title_link.css('::text').get()
-                plasmid_url = title_link.css('::attr(href)').get()
-                
-                if not plasmid_name or not plasmid_url:
-                    action.log(message_type="missing_basic_info")
-                    return None
-                
-                plasmid_name = plasmid_name.strip()
-                plasmid_url = urljoin(response.url, plasmid_url)
-                
-                # Extract plasmid popularity from flame icon
-                popularity = self.extract_popularity(entry)
-                
-                # Extract plasmid details from rows - the structure is different
-                plasmid_info = {
-                    "name": plasmid_name,
-                    "plasmid_url": plasmid_url,
-                    "popularity": popularity,
-                    "plasmid": f"#{plasmid_id}" if plasmid_id else None,
-                }
-                
-                # Parse detail rows - updated structure based on actual HTML
-                details = entry.css('div.search-result-details')
-                if details:
-                    # Look for field-label elements and their corresponding values
-                    field_labels = details.css('span.field-label')
-                    for label_elem in field_labels:
-                        label_text = label_elem.css('::text').get()
-                        if label_text:
-                            field_name = label_text.strip().lower()
-                            
-                            # Find the value in the next column (col-xs-10)
-                            parent_row = label_elem.xpath('../..')  # Go up to the row
-                            value_column = parent_row.css('.col-xs-10')
-                            
-                            if value_column:
-                                field_value = value_column.css('::text').get()
-                                if field_value:
-                                    field_value = field_value.strip()
-                                    
-                                    # Special handling for article links
-                                    if field_name == "article":
-                                        article_link = value_column.css('a::attr(href)').get()
-                                        if article_link:
-                                            field_value = urljoin(response.url, article_link)
-                                    
-                                    plasmid_info[field_name] = field_value
-                
-                # Extract plasmid map
-                map_column = entry.css('div.map-column')
-                if map_column:
-                    map_img = map_column.css('img::attr(src)').get()
-                    if map_img:
-                        plasmid_info["map_url"] = urljoin(response.url, map_img)
-                
-                # Create plasmid item
-                item = self.create_plasmid_item(plasmid_info)
-                action.add_success_fields(plasmid_id=item.get('id'))
-                return item
-                
-            except Exception as e:
-                action.log(message_type="parse_error", error=str(e))
+            # Extract plasmid ID from div id attribute (most reliable)
+            entry_id = entry.css('::attr(id)').get()
+            plasmid_id = None
+            if entry_id and entry_id.startswith('Plasmids-'):
+                try:
+                    plasmid_id = int(entry_id.split('-')[1])
+                except (ValueError, IndexError):
+                    action.log(message_type="id_extraction_failed", entry_id=entry_id)
+            
+            # Extract plasmid name and URL - the structure is h3 > span > a
+            title_link = entry.css('h3.search-result-title span a')
+            
+            if not title_link:
+                action.log(message_type="missing_title_link")
                 return None
+            
+            plasmid_name = title_link.css('::text').get()
+            plasmid_url = title_link.css('::attr(href)').get()
+            
+            if not plasmid_name or not plasmid_url:
+                action.log(message_type="missing_basic_info", name=plasmid_name, url=plasmid_url)
+                return None
+            
+            from urllib.parse import urljoin
+            plasmid_name = plasmid_name.strip()
+            plasmid_url = urljoin(response.url, plasmid_url)
+            
+            # Extract plasmid popularity from flame icon
+            popularity = self.extract_popularity(entry)
+            
+            # Extract plasmid details from rows - the structure is different
+            plasmid_info = {
+                "name": plasmid_name,
+                "plasmid_url": plasmid_url,
+                "popularity": popularity,
+                "plasmid": f"#{plasmid_id}" if plasmid_id else None,
+            }
+            
+            # Parse detail rows - updated structure based on actual HTML
+            details = entry.css('div.search-result-details')
+            if details:
+                # Look for field-label elements and their corresponding values
+                field_labels = details.css('span.field-label')
+                
+                for label_elem in field_labels:
+                    label_text = label_elem.css('::text').get()
+                    if label_text:
+                        original_field_name = label_text.strip()
+                        field_name = original_field_name.lower()
+                        
+                        # Find the value in the next column
+                        parent_row = label_elem.xpath('../..')  # Go up to the row
+                        value_column = parent_row.css('.col-xs-10, .col-md-10, .col-lg-10')
+                        
+                        if value_column:
+                            field_value = value_column.css('::text').get()
+                            if field_value:
+                                field_value = field_value.strip()
+                                
+                                # Special handling for article links
+                                if field_name == "article":
+                                    article_link = value_column.css('a::attr(href)').get()
+                                    if article_link:
+                                        field_value = urljoin(response.url, article_link)
+                                
+                                plasmid_info[field_name] = field_value
+                
+                # Additional attempt to find depositor info in all text
+                all_text = details.xpath('.//text()').getall()
+                for i, text in enumerate(all_text):
+                    text = text.strip()
+                    if text == "Depositing Lab" and i + 1 < len(all_text):
+                        depositor_name = all_text[i + 1].strip()
+                        if depositor_name and depositor_name != "Depositing Lab":
+                            plasmid_info["depositing lab"] = depositor_name
+                            action.log(message_type="found_depositing_lab", value=depositor_name)
+                            break
+            
+            # Extract plasmid map
+            map_column = entry.css('div.map-column')
+            if map_column:
+                map_img = map_column.css('img::attr(src)').get()
+                if map_img:
+                    plasmid_info["map_url"] = urljoin(response.url, map_img)
+            
+            # Create plasmid item
+            item = self.create_plasmid_item(plasmid_info)
+            action.add_success_fields(plasmid_id=item.get('id'))
+            return item
     
     def extract_popularity(self, entry) -> Optional[str]:
         """Extract popularity from flame icon."""
@@ -201,7 +213,10 @@ class PlasmidsSpider(scrapy.Spider):
                         return "medium"
                     elif cls == "addgene-flame-low":
                         return "low"
-        return None
+        
+        # If no flame icon is found, assume low popularity
+        # Many plasmids don't show the icon at all, which typically means low popularity
+        return "low"
     
     def create_plasmid_item(self, plasmid_info: Dict[str, Any]) -> PlasmidItem:
         """Create a PlasmidItem from extracted information."""
@@ -227,7 +242,7 @@ class PlasmidsSpider(scrapy.Spider):
         return PlasmidItem(
             id=plasmid_id,
             name=plasmid_info.get("name", ""),
-            depositor=plasmid_info.get("depositor", ""),
+            depositor=plasmid_info.get("depositing lab", plasmid_info.get("depositor", "")),
             purpose=plasmid_info.get("purpose"),
             article_url=plasmid_info.get("article"),
             insert=plasmid_info.get("insert"),
@@ -245,53 +260,4 @@ class PlasmidsSpider(scrapy.Spider):
             plasmid_url=plasmid_info.get("plasmid_url"),
         )
 
-
-class SequenceSpider(scrapy.Spider):
-    """Spider for scraping plasmid sequence download information."""
-    
-    name = 'sequences'
-    allowed_domains = ['addgene.org']
-    
-    custom_settings = {
-        'ROBOTSTXT_OBEY': True,
-        'DOWNLOAD_DELAY': 1,
-        'RANDOMIZE_DOWNLOAD_DELAY': True,
-        'CONCURRENT_REQUESTS': 4,
-        'CONCURRENT_REQUESTS_PER_DOMAIN': 2,
-        'USER_AGENT': 'addgene-mcp/0.1.0 (+https://github.com/your-repo/addgene-mcp)',
-    }
-    
-    def __init__(self, plasmid_id: int, format: str = "snapgene", **kwargs):
-        """Initialize spider with plasmid ID and format."""
-        super().__init__(**kwargs)
-        self.plasmid_id = plasmid_id
-        self.format = format
-        self.start_urls = [f'https://www.addgene.org/{plasmid_id}/sequences/']
-    
-    def parse(self, response):
-        """Parse the sequences page and extract download URLs."""
-        with start_action(action_type="parse_sequences", plasmid_id=self.plasmid_id, format=self.format) as action:
-            # Find full plasmid sequence section
-            full_sequences_section = response.css('section#depositor-full')
-            
-            download_url = None
-            available = False
-            
-            if full_sequences_section:
-                # Look for the specific format download link
-                download_link = full_sequences_section.css(f'a.{self.format}-file-download::attr(href)').get()
-                if download_link:
-                    download_url = urljoin(response.url, download_link)
-                    available = True
-                    action.log(message_type="download_url_found", url=download_url)
-                else:
-                    action.log(message_type="download_url_not_found", format=self.format)
-            else:
-                action.log(message_type="sequences_section_not_found")
-            
-            yield SequenceItem(
-                plasmid_id=self.plasmid_id,
-                format=self.format,
-                download_url=download_url,
-                available=available,
-            ) 
+ 

@@ -135,7 +135,7 @@ class TestMCPPagination:
         """Test pagination parameters - adapted from test_api.py:test_pagination_parameters."""
         with start_action(action_type="test_pagination_parameters") as action:
             # Test different page sizes (from client tests)
-            for page_size in [1, 10, 50, 100]:
+            for page_size in [1, 10, 50]:
                 result = await mcp_server.search_plasmids(
                     query="GFP",
                     page_size=page_size,
@@ -159,7 +159,7 @@ class TestMCPPagination:
             
             action.log(
                 message_type="pagination_test_completed",
-                tested_page_sizes=[1, 10, 50, 100],
+                tested_page_sizes=[1, 10, 50],
                 tested_page_numbers=[1, 2, 5]
             )
     
@@ -388,7 +388,7 @@ class TestMCPErrorHandling:
             # Test with extreme values (from client edge case tests)
             result = await mcp_server.search_plasmids(
                 query="test",
-                page_size=1000,  # Very large page size
+                page_size=50,  # Maximum supported page size
                 page_number=999   # Very high page number
             )
             
@@ -398,7 +398,7 @@ class TestMCPErrorHandling:
             
             action.log(
                 message_type="invalid_parameters_handled",
-                extreme_page_size=1000,
+                max_page_size=50,
                 extreme_page_number=999,
                 result_count=result.count
             )

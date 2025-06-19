@@ -3,7 +3,7 @@
 
 import asyncio
 import pytest
-from addgene_mcp.server import AddgeneScrapyManager
+from addgene_mcp.server import AddgeneMCP
 
 
 @pytest.mark.asyncio
@@ -12,7 +12,7 @@ async def test_filter_example():
     
     print("🔍 Testing filter functionality...")
     
-    api = AddgeneScrapyManager()
+    api = AddgeneMCP()
     
     # Test 1: Search with mammalian expression filter
     print("📄 Testing mammalian expression filter...")
