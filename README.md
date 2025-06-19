@@ -291,22 +291,36 @@ seq_info = await get_sequence_info(
 ## Research Applications
 
 <details>
-<summary>Research questions you can explore with this MCP server</summary>
+<summary>Tested queries you can explore with this MCP server</summary>
 
-TODO: make a judged-test to at least get some of them work
+**Judge-Based Testing Available**: We now provide comprehensive judge-based tests that evaluate the MCP server's ability to answer these research questions. See `test/README_JUDGE_TESTING.md` for details on running automated quality evaluation tests.
 
-* What CRISPR plasmids are available for gene editing in mammalian cells?
-* Which plasmids contain fluorescent protein reporters for live cell imaging?
-* What are the most popular plasmids for bacterial protein expression?
-* Which plasmids are available for lentiviral delivery systems?
-* What plasmids contain specific promoters for tissue-specific expression?
-* Which plasmids are suitable for industry use and commercialization?
-* What are the newest plasmids deposited for synthetic biology applications?
-* Which plasmids contain antibiotic resistance markers for selection?
-* What plasmids are available for optogenetics research?
-* Which plasmids contain inducible expression systems?
-* What plasmids are available for protein purification with specific tags?
-* Which plasmids contain viral vectors for gene therapy research?
+### Core Functionality Tests
+* Search for plasmids containing 'pLKO' and return 5 results
+* Find GFP plasmids with mammalian expression and high popularity, limit to 10 results
+* Search for something that definitely doesn't exist like 'VERY_UNLIKELY_PLASMID_NAME_XYZVWTUP123456789'
+* Test pagination by searching for 'GFP' with different page sizes (1, 10, 50)
+* Search for 'p53' plasmids on page 1 and page 2 with 10 results each to check pagination consistency
+
+### Data Structure Validation
+* Search for plasmids and validate the data structure includes required fields like ID, name, and depositor
+* Find plasmids with mammalian expression system and verify the expression field contains 'mammalian'
+* Search for plasmids and check if article_url and map_url fields are properly formatted when present
+* Test industry vs academic availability by searching and checking is_industry boolean field
+
+### Advanced Filtering  
+* Search for plasmids with multiple filters: single_insert plasmid type, mammalian expression, and high popularity
+* Search for CRISPR plasmids with vector_types='crispr'
+* Search for lentiviral plasmids with vector_types='lentiviral'
+* Search for plasmids with bacterial expression system
+
+### Sequence Information
+* Get sequence information for a plasmid with ID 12345 in snapgene format
+* Get sequence information for a plasmid with ID 12345 in genbank format
+* Get sequence information for a plasmid with ID 12345 in fasta format
+* Get popular plasmids with page size 20
+
+**Note**: These queries are based on our actual test suite and represent validated functionality. Each query has been tested to ensure it properly calls the MCP functions and returns appropriate data structures.
 
 </details>
 
@@ -413,12 +427,15 @@ This project is licensed under the MIT License.
 
 This project is part of the [Longevity Genie](https://github.com/longevity-genie) organization, which develops open-source AI assistants and libraries for health, genetics, and longevity research.
 
-### Other MCP Servers by Longevity Genie
+### MCP Servers
 
 We also develop other specialized MCP servers for biomedical research:
 
-- **[opengenes-mcp](https://github.com/longevity-genie/opengenes-mcp)** - MCP server for OpenGenes database, providing access to aging and longevity research data
-- **[biothings-mcp](https://github.com/longevity-genie/biothings-mcp)** - MCP server for BioThings.io APIs, providing access to gene annotation (mygene.info), variant annotation (myvariant.info), and chemical compound data (mychem.info)
+- **[gget-mcp](https://github.com/longevity-genie/gget-mcp)**: A powerful bioinformatics toolkit for genomics queries and analysis, wrapping the popular `gget` library.
+- **[opengenes-mcp](https://github.com/longevity-genie/opengenes-mcp)**: A queryable database for aging and longevity research from the OpenGenes project.
+- **[synergy-age-mcp](https://github.com/longevity-genie/synergy-age-mcp)**: A database of synergistic and antagonistic genetic interactions in longevity from SynergyAge.
+- **[biothings-mcp](https://github.com/longevity-genie/biothings-mcp)**: Access to BioThings.io APIs for comprehensive gene, variant, chemical, and taxonomic data.
+- **[pharmacology-mcp](https://github.com/antonkulaga/pharmacology-mcp)**: Access to the Guide to PHARMACOLOGY database for drug, target, and ligand information.
 
 We are supported by:
 

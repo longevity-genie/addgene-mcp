@@ -12,7 +12,6 @@ from fastmcp import FastMCP
 from pydantic import BaseModel, Field, HttpUrl
 from eliot import start_action
 import httpx
-from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, retry_if_exception_type
 
 from addgene_mcp.scrapy_addgene.runner import get_scrapy_manager

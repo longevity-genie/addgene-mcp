@@ -1,0 +1,50 @@
+[
+  {
+    "question": "Search for plasmids containing 'pLKO' and return 5 results",
+    "answer": "I'll search for plasmids containing 'pLKO' with a page size of 5. This should return a SearchResult with valid plasmid data including IDs, names, depositors, and boolean industry availability flags."
+  },
+  {
+    "question": "Find GFP plasmids with mammalian expression and high popularity, limit to 10 results",
+    "answer": "I'll search for GFP plasmids with mammalian expression system and high popularity, limited to 10 results. The results should show plasmids with mammalian expression systems and high popularity levels."
+  },
+  {
+    "question": "Search for something that definitely doesn't exist like 'VERY_UNLIKELY_PLASMID_NAME_XYZVWTUP123456789'",
+    "answer": "I'll search for a very unlikely plasmid name. This should return an empty SearchResult with a count of 0 and an empty plasmids list, demonstrating proper handling of no results."
+  },
+  {
+    "question": "Test pagination by searching for 'GFP' with page size 1, then page size 10, then page size 50",
+    "answer": "I'll test different page sizes for 'GFP' searches. Each result should respect the requested page size and not return more results than specified. The page_size and page fields should match the requested values."
+  },
+  {
+    "question": "Search for 'p53' plasmids on page 1 and page 2 with 10 results each to check pagination consistency",
+    "answer": "I'll search for p53 plasmids on consecutive pages. The total count should be consistent between pages, and there should be no duplicate plasmid IDs between page 1 and page 2 results."
+  },
+  {
+    "question": "Search for plasmids and validate the data structure includes required fields like ID, name, and depositor",
+    "answer": "I'll search for plasmids and validate each returned plasmid has the required fields: a positive integer ID, non-empty name string, non-empty depositor string, and a boolean is_industry field."
+  },
+  {
+    "question": "Find plasmids with mammalian expression system and verify the expression field contains 'mammalian'",
+    "answer": "I'll search for plasmids with mammalian expression filtering. Each returned plasmid's expression field should contain 'mammalian' in the expression list when the field is present."
+  },
+  {
+    "question": "Search for plasmids with multiple filters: single_insert plasmid type, mammalian expression, and high popularity",
+    "answer": "I'll search with multiple combined filters. The results should respect all filter criteria: plasmid_type should be related to single inserts, expression should include mammalian, and popularity should be high."
+  },
+  {
+    "question": "Search for plasmids and check if article_url and map_url fields are properly formatted when present",
+    "answer": "I'll search for plasmids and validate URL fields. When article_url and map_url are present, they should be properly formatted URLs or None values."
+  },
+  {
+    "question": "Test industry vs academic availability by searching and checking is_industry boolean field",
+    "answer": "I'll search for plasmids and examine the is_industry field. Each plasmid should have a boolean is_industry field indicating whether it's available for industry use."
+  },
+  {
+    "question": "Get sequence information for a plasmid with ID 12345 in snapgene format",
+    "answer": "I'll retrieve sequence download information for plasmid ID 12345 in snapgene format. This should return a SequenceDownloadInfo object with the plasmid_id, format, available boolean, and download_url if available."
+  },
+  {
+    "question": "Get popular plasmids with page size 20",
+    "answer": "I'll retrieve popular plasmids with a page size of 20. This should return a SearchResult with high-popularity plasmids, respecting the page size limit."
+  }
+] 
