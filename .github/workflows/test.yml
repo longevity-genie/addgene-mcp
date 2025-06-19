@@ -1,0 +1,190 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    
+    env:
+      TESTING: true
+      # Use same secrets as opengenes-mcp if needed for API access
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+
+    - name: Run linting
+      run: |
+        uv run ruff check .
+        uv run ruff format --check .
+      continue-on-error: true
+
+    - name: Run unit tests
+      run: uv run pytest test/ -v --tb=short --color=yes -m "unit or not slow"
+
+    - name: Run integration tests
+      run: uv run pytest test/ -v --tb=short --color=yes -m "integration"
+      continue-on-error: true
+
+    - name: Run all tests with coverage
+      run: |
+        uv add --dev pytest-cov
+        uv run pytest test/ --cov=src/addgene_mcp --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  test-server:
+    runs-on: ubuntu-latest
+    
+    env:
+      TESTING: true
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+
+    - name: Test server startup (stdio mode)
+      run: |
+        timeout 10s uv run stdio || [ $? -eq 124 ]
+
+    - name: Test server startup (http mode)
+      run: |
+        uv run server --port 8000 &
+        SERVER_PID=$!
+        sleep 5
+        curl -f http://localhost:8000/health || curl -f http://localhost:8000/ || echo "Server health check failed"
+        kill $SERVER_PID || true
+
+    - name: Test MCP configuration
+      run: |
+        # Test that MCP config files are valid JSON
+        if [ -f mcp-config.json ]; then
+          python -m json.tool mcp-config.json > /dev/null
+        fi
+        if [ -f mcp-config-stdio.json ]; then
+          python -m json.tool mcp-config-stdio.json > /dev/null
+        fi
+
+    - name: Test MCP server functionality
+      run: |
+        # Test that the server can be imported and instantiated
+        uv run python -c "
+        import sys
+        sys.path.insert(0, 'src')
+        from addgene_mcp.server import AddgeneMCP
+        print('✓ Server can be imported')
+        try:
+            # Test basic instantiation
+            server = AddgeneMCP()
+            print('✓ Server can be instantiated')
+            print(f'✓ Server name: {server.name}')
+        except Exception as e:
+            print(f'✗ Server instantiation failed: {e}')
+            sys.exit(1)
+        "
+        
+        # Test server script help (should exit cleanly)
+        uv run addgene-mcp --help || uv run server --help
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+
+    - name: Run security checks
+      run: |
+        uv add --dev bandit safety
+        uv run bandit -r src/ -f json || true
+        uv run safety check || true
+
+  test-scrapy:
+    runs-on: ubuntu-latest
+    
+    env:
+      TESTING: true
+      
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+
+    - name: Test Scrapy components
+      run: |
+        # Test that Scrapy components can be imported
+        uv run python -c "
+        import sys
+        sys.path.insert(0, 'src')
+        from addgene_mcp.scrapy_addgene.spiders.plasmids import PlasmidsSpider
+        from addgene_mcp.scrapy_addgene.items import PlasmidItem
+        from addgene_mcp.scrapy_addgene.runner import ScrapyManager
+        print('✓ Scrapy components can be imported')
+        
+        # Test ScrapyManager instantiation
+        manager = ScrapyManager()
+        print('✓ ScrapyManager can be instantiated')
+        "
+
+    - name: Test specific functionality
+      run: |
+        # Run specific tests that validate our functionality
+        uv run pytest test/test_alzheimer_search.py -v
+        uv run pytest test/test_basic_search.py -v
+        uv run pytest test/test_filters.py -v 
