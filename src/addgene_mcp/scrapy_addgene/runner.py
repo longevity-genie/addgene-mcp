@@ -151,16 +151,23 @@ class ScrapyManager:
                 
                 # Run scrapy in subprocess with proper Windows handling
                 is_windows = sys.platform.startswith('win')
-                process = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    cwd=self.scrapy_project_dir,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    env=env,
-                    # Set proper encoding for Windows
-                    encoding='utf-8' if is_windows else None,
-                    errors='replace' if is_windows else None
-                )
+                
+                # On Windows with ProactorEventLoop, encoding/errors parameters are not allowed
+                subprocess_kwargs = {
+                    'cwd': self.scrapy_project_dir,
+                    'stdout': asyncio.subprocess.PIPE,
+                    'stderr': asyncio.subprocess.PIPE,
+                    'env': env
+                }
+                
+                # Only add encoding/errors on non-Windows or if using SelectorEventLoop
+                if not is_windows:
+                    subprocess_kwargs.update({
+                        'encoding': 'utf-8',
+                        'errors': 'replace'
+                    })
+                
+                process = await asyncio.create_subprocess_exec(*cmd, **subprocess_kwargs)
                 
                 stdout, stderr = await process.communicate()
                 

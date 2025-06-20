@@ -147,10 +147,10 @@ class AddgeneMCP(FastMCP):
             """Get popular plasmids from Addgene."""
             return await self.get_popular_plasmids(page_size=page_size)
         
-        @self.tool(name=f"{self.prefix}download_sequence", description="Download a plasmid sequence file to the local filesystem. This actually downloads the file from Addgene and saves it locally. Use EXACTLY format='snapgene' for .dna files or format='genbank' for .gb files. These are the only two valid format values. Returns the local file path and download status.")
+        @self.tool(name=f"{self.prefix}download_sequence", description="Download a plasmid sequence file to the local filesystem. This actually downloads the file from Addgene and saves it locally. Use EXACTLY format='genbank' for .gb files (default) or format='snapgene' for .dna files. These are the only two valid format values. Returns the local file path and download status.")
         async def download_sequence_tool(
             plasmid_id: int, 
-            format: SequenceFormat = "snapgene",
+            format: SequenceFormat = "genbank",
             download_directory: Optional[str] = None
         ) -> SequenceDownloadResult:
             """Download a plasmid sequence file to the local filesystem."""
@@ -442,7 +442,7 @@ class AddgeneMCP(FastMCP):
     async def download_sequence(
         self, 
         plasmid_id: int, 
-        format: SequenceFormat = "snapgene",
+        format: SequenceFormat = "genbank",
         download_directory: Optional[str] = None
     ) -> SequenceDownloadResult:
         """Download a plasmid sequence file to the local filesystem.
@@ -450,9 +450,10 @@ class AddgeneMCP(FastMCP):
         Args:
             plasmid_id: The Addgene plasmid ID number (e.g., 12345)
             format: Sequence file format - use these EXACT string values:
-                   - "snapgene" for SnapGene .dna files (default, recommended)
-                   - "genbank" for GenBank .gb files
-            download_directory: Optional directory to save the file. If None, uses current directory.
+                   - "genbank" for GenBank .gb files (default)
+                   - "snapgene" for SnapGene .dna files
+            download_directory: Optional directory to save the file. If None, resolves to the current 
+                   working directory (recommended unless you need a specific location).
                    
         USAGE EXAMPLES:
         - Download SnapGene format: format="snapgene" 
@@ -481,11 +482,15 @@ class AddgeneMCP(FastMCP):
                     )
                 
                 # Set up download directory
+                # It's recommended to resolve to the current working directory by default
+                # unless the user specifically wants a different location
+                import os
                 if download_directory is None:
-                    download_directory = "."
+                    download_directory = os.getcwd()  # Use current working directory
+                else:
+                    download_directory = os.path.abspath(download_directory)  # Make absolute
                 
                 # Create directory if it doesn't exist
-                import os
                 os.makedirs(download_directory, exist_ok=True)
                 
                 # Determine file extension based on format

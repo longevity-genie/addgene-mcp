@@ -37,11 +37,11 @@ async def test_windows_subprocess_debug():
     
     # Test subprocess execution with a simple command first
     try:
+        # On Windows with ProactorEventLoop, shell must be False
         process = await asyncio.create_subprocess_exec(
             sys.executable, '-c', 'print("Hello from subprocess")',
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            shell=sys.platform.startswith('win')
+            stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await process.communicate()
         
@@ -62,11 +62,11 @@ async def test_windows_subprocess_debug():
     
     # Test scrapy command availability
     try:
+        # On Windows with ProactorEventLoop, shell must be False
         process = await asyncio.create_subprocess_exec(
             sys.executable, '-m', 'scrapy', '--help',
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            shell=sys.platform.startswith('win')
+            stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await process.communicate()
         
