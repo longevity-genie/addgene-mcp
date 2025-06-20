@@ -6,7 +6,7 @@ import os
 from typing import List, Dict, Any, Optional, Union
 from contextlib import asynccontextmanager
 import sys
-import argparse
+import typer
 
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field, HttpUrl
@@ -29,6 +29,10 @@ from addgene_mcp.datatypes import (
 )
 
 from addgene_mcp.scrapy_addgene.runner import get_scrapy_manager
+
+# Get version from package metadata
+from importlib.metadata import version
+__version__ = version("addgene-mcp")
 
 # Configuration
 DEFAULT_HOST = os.getenv("MCP_HOST", "0.0.0.0")
@@ -529,30 +533,97 @@ class AddgeneMCP(FastMCP):
                     error_message=error_message
                 )
 
-def cli_app():
-    """Run the Addgene MCP server with HTTP transport."""
-    parser = argparse.ArgumentParser(description="Addgene MCP Server")
-    parser.add_argument("--host", default=DEFAULT_HOST, help="Host to bind to")
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Port to bind to")
-    args = parser.parse_args()
-    
-    mcp = AddgeneMCP()
-    mcp.run(transport=DEFAULT_TRANSPORT, host=args.host, port=args.port)
+# Create Typer app
+app = typer.Typer(
+    name="addgene-mcp",
+    help="Addgene MCP Server - API interface for Addgene plasmid repository",
+    add_completion=False
+)
 
+def version_callback(value: bool):
+    """Show version information."""
+    if value:
+        typer.echo(f"addgene-mcp version {__version__}")
+        raise typer.Exit()
+
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    version: Optional[bool] = typer.Option(
+        None, 
+        "--version", 
+        "-V", 
+        callback=version_callback, 
+        is_eager=True,
+        help="Show version and exit"
+    )
+):
+    """Addgene MCP Server - API interface for Addgene plasmid repository."""
+    if ctx.invoked_subcommand is None:
+        # Default to stdio if no command is specified
+        cli_app_stdio()
+
+@app.command("server")
+def cli_app(
+    host: str = typer.Option(DEFAULT_HOST, "--host", help="Host to bind to"),
+    port: int = typer.Option(DEFAULT_PORT, "--port", help="Port to bind to")
+):
+    """Run the Addgene MCP server with HTTP transport."""
+    mcp = AddgeneMCP()
+    mcp.run(transport=DEFAULT_TRANSPORT, host=host, port=port)
+
+@app.command("stdio")
 def cli_app_stdio():
     """Run the Addgene MCP server with STDIO transport."""
     mcp = AddgeneMCP()
     mcp.run(transport="stdio")
 
-def cli_app_sse():
+@app.command("sse")
+def cli_app_sse(
+    host: str = typer.Option(DEFAULT_HOST, "--host", help="Host to bind to"),
+    port: int = typer.Option(DEFAULT_PORT, "--port", help="Port to bind to")
+):
     """Run the Addgene MCP server with SSE transport."""
-    parser = argparse.ArgumentParser(description="Addgene MCP Server")
-    parser.add_argument("--host", default=DEFAULT_HOST, help="Host to bind to")
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Port to bind to")
-    args = parser.parse_args()
-    
     mcp = AddgeneMCP()
-    mcp.run(transport="sse", host=args.host, port=args.port)
+    mcp.run(transport="sse", host=host, port=port)
+
+# For backward compatibility - default command
+@app.command(hidden=True)
+def default():
+    """Default command - runs STDIO transport."""
+    cli_app_stdio()
+
+# Individual Typer apps for script entry points
+stdio_app = typer.Typer(name="stdio", help="Run the Addgene MCP server with STDIO transport")
+
+@stdio_app.callback(invoke_without_command=True)
+def cli_app_stdio_entry(ctx: typer.Context):
+    """Run the Addgene MCP server with STDIO transport."""
+    cli_app_stdio()
+
+server_app = typer.Typer(name="server", help="Run the Addgene MCP server with HTTP transport")
+
+@server_app.callback(invoke_without_command=True)
+def cli_app_entry(
+    ctx: typer.Context,
+    host: str = typer.Option(DEFAULT_HOST, "--host", help="Host to bind to"),
+    port: int = typer.Option(DEFAULT_PORT, "--port", help="Port to bind to")
+):
+    """Run the Addgene MCP server with HTTP transport."""
+    mcp = AddgeneMCP()
+    mcp.run(transport=DEFAULT_TRANSPORT, host=host, port=port)
+
+sse_app = typer.Typer(name="sse", help="Run the Addgene MCP server with SSE transport")
+
+@sse_app.callback(invoke_without_command=True)
+def cli_app_sse_entry(
+    ctx: typer.Context,
+    host: str = typer.Option(DEFAULT_HOST, "--host", help="Host to bind to"),
+    port: int = typer.Option(DEFAULT_PORT, "--port", help="Port to bind to")
+):
+    """Run the Addgene MCP server with SSE transport."""
+    mcp = AddgeneMCP()
+    mcp.run(transport="sse", host=host, port=port)
 
 if __name__ == "__main__":
-    cli_app_stdio() 
+    app() 

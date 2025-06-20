@@ -1,6 +1,6 @@
 [project]
 name = "addgene-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "MCP for Addgene - Plasmid Repository API"
 readme = "README.md"
 authors = [
@@ -26,10 +26,10 @@ dependencies = [
 ]
 
 [project.scripts]
-addgene-mcp = "addgene_mcp.server:cli_app_stdio"
-server = "addgene_mcp.server:cli_app"
-stdio = "addgene_mcp.server:cli_app_stdio"
-sse = "addgene_mcp.server:cli_app_sse"
+addgene-mcp = "addgene_mcp.server:app"
+server = "addgene_mcp.server:server_app"
+stdio = "addgene_mcp.server:stdio_app"
+sse = "addgene_mcp.server:sse_app"
 
 [build-system]
 requires = ["hatchling"]

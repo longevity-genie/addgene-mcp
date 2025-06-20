@@ -150,7 +150,6 @@ class ScrapyManager:
                 )
                 
                 # Run scrapy in subprocess with proper Windows handling
-                # Use shell=True on Windows for better subprocess handling
                 is_windows = sys.platform.startswith('win')
                 process = await asyncio.create_subprocess_exec(
                     *cmd,
@@ -158,7 +157,6 @@ class ScrapyManager:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                     env=env,
-                    shell=is_windows,
                     # Set proper encoding for Windows
                     encoding='utf-8' if is_windows else None,
                     errors='replace' if is_windows else None
