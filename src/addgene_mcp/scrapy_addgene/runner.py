@@ -30,12 +30,10 @@ class ScrapyManager:
         # Set testing environment variable
         env['TESTING'] = 'true'
         
-        # Windows-specific environment setup
-        if sys.platform.startswith('win'):
-            # Ensure UTF-8 encoding on Windows
-            env['PYTHONIOENCODING'] = 'utf-8'
-            # Disable buffering for better subprocess communication
-            env['PYTHONUNBUFFERED'] = '1'
+        # Hardcode UTF-8 encoding on all platforms for consistency
+        env['PYTHONIOENCODING'] = 'utf-8'
+        env['PYTHONUNBUFFERED'] = '1'  # Disable buffering for better subprocess communication
+        env['PYTHONUTF8'] = '1'  # Force UTF-8 mode on Python 3.7+
         
         return env
 
@@ -145,33 +143,21 @@ class ScrapyManager:
                     message_type="scrapy_command", 
                     cmd=cmd, 
                     cwd=str(self.scrapy_project_dir),
-                    pythonpath=env.get('PYTHONPATH', 'not set'),
-                    is_windows=sys.platform.startswith('win')
+                    pythonpath=env.get('PYTHONPATH', 'not set')
                 )
                 
-                # Run scrapy in subprocess with proper Windows handling
-                is_windows = sys.platform.startswith('win')
-                
-                # On Windows with ProactorEventLoop, encoding/errors parameters are not allowed
-                subprocess_kwargs = {
-                    'cwd': self.scrapy_project_dir,
-                    'stdout': asyncio.subprocess.PIPE,
-                    'stderr': asyncio.subprocess.PIPE,
-                    'env': env
-                }
-                
-                # Only add encoding/errors on non-Windows or if using SelectorEventLoop
-                if not is_windows:
-                    subprocess_kwargs.update({
-                        'encoding': 'utf-8',
-                        'errors': 'replace'
-                    })
-                
-                process = await asyncio.create_subprocess_exec(*cmd, **subprocess_kwargs)
+                # Run scrapy in subprocess - always use binary pipes and handle UTF-8 manually
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    cwd=self.scrapy_project_dir,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=env
+                )
                 
                 stdout, stderr = await process.communicate()
                 
-                # Decode output properly on all platforms
+                # Always decode output as UTF-8 (hardcoded for consistency)
                 if isinstance(stdout, bytes):
                     stdout = stdout.decode('utf-8', errors='replace')
                 if isinstance(stderr, bytes):
@@ -189,9 +175,8 @@ class ScrapyManager:
                 
                 if process.returncode != 0:
                     action.log(message_type="scrapy_error", stderr=stderr, stdout=stdout)
-                    # Don't return empty on Windows - log the error but continue trying to read results
-                    if not is_windows:
-                        return []
+                    # Log the error but continue trying to read results (resilient behavior)
+                    # Don't return empty immediately - the output file might still have partial results
                 
                 # Read results from file
                 results = []
