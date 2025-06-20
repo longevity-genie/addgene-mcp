@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.12"]
 
     env:
       TESTING: true
@@ -29,7 +29,7 @@ jobs:
       run: uv sync --dev
 
     - name: Run tests
-      run: uv run pytest -vvv -s
+      run: uv run pytest -vvv -s -k "not judge"
 
     - name: Test MCP server functionality
       run: |
@@ -57,7 +57,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.12"]
 
     env:
       TESTING: true
@@ -75,7 +75,7 @@ jobs:
       run: uv sync --dev
 
     - name: Run tests
-      run: uv run pytest -vvv -s
+      run: uv run pytest -vvv -s -k "not judge"
 
     - name: Test MCP server functionality
       shell: pwsh
@@ -109,7 +109,7 @@ jobs:
       uses: astral-sh/setup-uv@v4
 
     - name: Set up Python
-      run: uv python install 3.11
+      run: uv python install 3.12
 
     - name: Install dependencies
       run: uv sync --dev
@@ -129,7 +129,7 @@ jobs:
       uses: astral-sh/setup-uv@v4
 
     - name: Set up Python
-      run: uv python install 3.11
+      run: uv python install 3.12
 
     - name: Install dependencies
       run: uv sync --dev

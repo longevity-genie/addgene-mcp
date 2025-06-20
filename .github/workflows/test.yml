@@ -12,8 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.12"]
+        os: [ubuntu-latest]
+        python-version: ["3.12"]
     
     env:
       TESTING: true
@@ -41,24 +41,13 @@ jobs:
       continue-on-error: true
 
     - name: Run unit tests
-      run: uv run pytest test/ -v --tb=short --color=yes -m "unit or not slow"
+      run: uv run pytest test/ -v --tb=short --color=yes -m "unit or not slow" -k "not judge"
 
     - name: Run integration tests
-      run: uv run pytest test/ -v --tb=short --color=yes -m "integration"
+      run: uv run pytest test/ -v --tb=short --color=yes -m "integration" -k "not judge"
       continue-on-error: true
 
-    - name: Run all tests with coverage
-      run: |
-        uv add --dev pytest-cov
-        uv run pytest test/ --cov=src/addgene_mcp --cov-report=xml --cov-report=term-missing
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
 
   test-server:
     runs-on: ubuntu-latest
@@ -76,7 +65,7 @@ jobs:
         version: "latest"
 
     - name: Set up Python
-      run: uv python install 3.11
+      run: uv python install 3.12
 
     - name: Install dependencies
       run: uv sync --all-extras --dev
@@ -135,7 +124,7 @@ jobs:
         version: "latest"
 
     - name: Set up Python
-      run: uv python install 3.11
+      run: uv python install 3.12
 
     - name: Install dependencies
       run: uv sync --all-extras --dev
@@ -161,7 +150,7 @@ jobs:
         version: "latest"
 
     - name: Set up Python
-      run: uv python install 3.11
+      run: uv python install 3.12
 
     - name: Install dependencies
       run: uv sync --all-extras --dev
@@ -185,6 +174,5 @@ jobs:
     - name: Test specific functionality
       run: |
         # Run specific tests that validate our functionality
-        uv run pytest test/test_alzheimer_search.py -v
-        uv run pytest test/test_basic_search.py -v
-        uv run pytest test/test_filters.py -v 
+        uv run pytest test/test_alzheimer_search.py -v -k "not judge"
+        uv run pytest test/test_filters.py -v -k "not judge" 

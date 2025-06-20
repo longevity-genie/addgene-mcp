@@ -63,6 +63,8 @@ def main():
         (test_dir / "test_pagination.py", "Pagination Tests"),
         (test_dir / "test_filters.py", "Filter Tests"),
         (test_dir / "test_error_handling.py", "Error Handling Tests"),
+        (test_dir / "test_download_sequence.py", "Sequence Download Tests"),
+        (test_dir / "test_download_integration.py", "Download Integration Tests"),
     ]
     
     # Track results
