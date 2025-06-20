@@ -6,6 +6,7 @@ the asyncio event loop used by pytest can coexist.
 """
 
 import os
+import sys
 import pytest
 
 # Set testing environment variables - these will be available for all tests
@@ -18,6 +19,20 @@ os.environ['TEST_SCRAPY_AUTOTHROTTLE_MAX_DELAY'] = '5.0'
 os.environ['TEST_SCRAPY_DOWNLOAD_TIMEOUT'] = '30'
 os.environ['TEST_SCRAPY_RETRY_TIMES'] = '2'
 os.environ['SCRAPY_TIMEOUT_SECONDS'] = '120'
+
+# Windows-specific environment setup
+if sys.platform.startswith('win'):
+    # Ensure UTF-8 encoding on Windows
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    # Disable buffering for better subprocess communication
+    os.environ['PYTHONUNBUFFERED'] = '1'
+    # Set Windows console to handle Unicode
+    os.environ['PYTHONUTF8'] = '1'
+    # Use more conservative settings on Windows for tests
+    os.environ['TEST_SCRAPY_DOWNLOAD_DELAY'] = '1.0'  # Slower on Windows
+    os.environ['TEST_SCRAPY_CONCURRENT_REQUESTS'] = '2'  # Less concurrency on Windows
+    os.environ['TEST_SCRAPY_AUTOTHROTTLE_START_DELAY'] = '1.0'
+    os.environ['TEST_SCRAPY_AUTOTHROTTLE_MAX_DELAY'] = '8.0'
 
 def pytest_configure(config):
     """Configure pytest with custom markers and settings."""

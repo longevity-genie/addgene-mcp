@@ -15,7 +15,7 @@ def test_spider_url_building():
     assert "page_size=10" in url1
     assert "page_number=1" in url1
     assert "q=alzheimer" in url1
-    print("✅ Default parameters test passed\n")
+    print("Default parameters test passed\n")
     
     # Test 2: Maximum page size (50)
     spider2 = PlasmidsSpider(query="alzheimer", page_size=50, page_number=1)
@@ -25,7 +25,7 @@ def test_spider_url_building():
     assert "page_size=50" in url2
     assert "page_number=1" in url2
     assert "q=alzheimer" in url2
-    print("✅ Maximum page size test passed\n")
+    print("Maximum page size test passed\n")
     
     # Test 3: Verify start_urls is set correctly
     spider3 = PlasmidsSpider(query="alzheimer", page_size=50, page_number=1)
@@ -34,9 +34,9 @@ def test_spider_url_building():
     assert len(spider3.start_urls) == 1
     assert "page_size=50" in spider3.start_urls[0]
     assert "q=alzheimer" in spider3.start_urls[0]
-    print("✅ Start URLs test passed\n")
+    print("Start URLs test passed\n")
     
-    print("🎉 All URL building tests passed!")
+    print("All URL building tests passed!")
 
 
 if __name__ == "__main__":

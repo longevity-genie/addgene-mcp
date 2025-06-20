@@ -5,6 +5,7 @@ import json
 import subprocess
 import tempfile
 import os
+import sys
 from typing import List, Dict, Any, Optional
 from eliot import start_action
 from pathlib import Path
@@ -14,6 +15,29 @@ class ScrapyManager:
 
     def __init__(self) -> None:
         self.scrapy_project_dir = Path(__file__).parent
+
+    def _get_subprocess_env(self) -> Dict[str, str]:
+        """Get environment variables for subprocess execution."""
+        env = os.environ.copy()
+        
+        # Ensure Python can find our modules
+        src_path = Path(__file__).parent.parent.parent  # Go up to src directory
+        if 'PYTHONPATH' in env:
+            env['PYTHONPATH'] = f"{src_path}{os.pathsep}{env['PYTHONPATH']}"
+        else:
+            env['PYTHONPATH'] = str(src_path)
+        
+        # Set testing environment variable
+        env['TESTING'] = 'true'
+        
+        # Windows-specific environment setup
+        if sys.platform.startswith('win'):
+            # Ensure UTF-8 encoding on Windows
+            env['PYTHONIOENCODING'] = 'utf-8'
+            # Disable buffering for better subprocess communication
+            env['PYTHONUNBUFFERED'] = '1'
+        
+        return env
 
     async def search_plasmids(
         self,
@@ -78,9 +102,9 @@ class ScrapyManager:
                 output_file = f.name
             
             try:
-                # Build scrapy command
+                # Build scrapy command - use python -m scrapy for better Windows compatibility
                 cmd = [
-                    'scrapy', 'crawl', 'plasmids',
+                    sys.executable, '-m', 'scrapy', 'crawl', 'plasmids',
                     '-o', output_file,
                     '-s', 'ROBOTSTXT_OBEY=True',
                     '-s', 'DOWNLOAD_DELAY=0.5',
@@ -114,25 +138,61 @@ class ScrapyManager:
                 
                 cmd.extend(spider_args)
                 
-                # Run scrapy in subprocess
+                # Get proper environment for subprocess
+                env = self._get_subprocess_env()
+                
+                action.log(
+                    message_type="scrapy_command", 
+                    cmd=cmd, 
+                    cwd=str(self.scrapy_project_dir),
+                    pythonpath=env.get('PYTHONPATH', 'not set'),
+                    is_windows=sys.platform.startswith('win')
+                )
+                
+                # Run scrapy in subprocess with proper Windows handling
+                # Use shell=True on Windows for better subprocess handling
+                is_windows = sys.platform.startswith('win')
                 process = await asyncio.create_subprocess_exec(
                     *cmd,
                     cwd=self.scrapy_project_dir,
                     stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
+                    stderr=asyncio.subprocess.PIPE,
+                    env=env,
+                    shell=is_windows,
+                    # Set proper encoding for Windows
+                    encoding='utf-8' if is_windows else None,
+                    errors='replace' if is_windows else None
                 )
                 
                 stdout, stderr = await process.communicate()
                 
+                # Decode output properly on all platforms
+                if isinstance(stdout, bytes):
+                    stdout = stdout.decode('utf-8', errors='replace')
+                if isinstance(stderr, bytes):
+                    stderr = stderr.decode('utf-8', errors='replace')
+                
+                action.log(
+                    message_type="scrapy_execution",
+                    return_code=process.returncode,
+                    stdout_length=len(stdout) if stdout else 0,
+                    stderr_length=len(stderr) if stderr else 0,
+                    output_file_exists=os.path.exists(output_file),
+                    stdout_preview=stdout[:200] if stdout else None,
+                    stderr_preview=stderr[:200] if stderr else None
+                )
+                
                 if process.returncode != 0:
-                    action.log(message_type="scrapy_error", stderr=stderr.decode(), stdout=stdout.decode())
-                    return []
+                    action.log(message_type="scrapy_error", stderr=stderr, stdout=stdout)
+                    # Don't return empty on Windows - log the error but continue trying to read results
+                    if not is_windows:
+                        return []
                 
                 # Read results from file
                 results = []
                 if os.path.exists(output_file):
                     try:
-                        with open(output_file, 'r') as f:
+                        with open(output_file, 'r', encoding='utf-8') as f:
                             content = f.read().strip()
                             if content:
                                 # Parse JSON array format (not JSON lines)
@@ -160,7 +220,11 @@ class ScrapyManager:
             finally:
                 # Clean up temporary file
                 if os.path.exists(output_file):
-                    os.unlink(output_file)
+                    try:
+                        os.unlink(output_file)
+                    except Exception as e:
+                        # Don't fail if we can't clean up the temp file
+                        pass
     
     async def get_sequence_info(self, plasmid_id: int, format: str = "snapgene") -> Optional[Dict[str, Any]]:
         """Get sequence info using simple HTTP requests."""

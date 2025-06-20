@@ -1,6 +1,7 @@
 """Scrapy settings for addgene scraping project."""
 
 import os
+import sys
 
 BOT_NAME = 'addgene_scraper'
 
@@ -77,6 +78,15 @@ REQUEST_FINGERPRINTER_IMPLEMENTATION = '2.7'
 # Set settings whose default value is deprecated
 TWISTED_REACTOR = 'twisted.internet.asyncioreactor.AsyncioSelectorReactor'
 
+# Windows-specific settings
+if sys.platform.startswith('win'):
+    # Use more conservative settings on Windows
+    DOWNLOAD_DELAY = float(os.getenv('SCRAPY_DOWNLOAD_DELAY', '2.0'))
+    CONCURRENT_REQUESTS_PER_DOMAIN = int(os.getenv('SCRAPY_CONCURRENT_REQUESTS_PER_DOMAIN', '1'))
+    CONCURRENT_REQUESTS = int(os.getenv('SCRAPY_CONCURRENT_REQUESTS', '4'))
+    AUTOTHROTTLE_START_DELAY = float(os.getenv('SCRAPY_AUTOTHROTTLE_START_DELAY', '2.0'))
+    AUTOTHROTTLE_MAX_DELAY = float(os.getenv('SCRAPY_AUTOTHROTTLE_MAX_DELAY', '15.0'))
+
 # Test specific settings - use smaller values for testing to avoid hanging
 if os.getenv('TESTING', 'False').lower() == 'true':
     DOWNLOAD_DELAY = float(os.getenv('TEST_SCRAPY_DOWNLOAD_DELAY', '0.5'))
@@ -84,4 +94,12 @@ if os.getenv('TESTING', 'False').lower() == 'true':
     CONCURRENT_REQUESTS = int(os.getenv('TEST_SCRAPY_CONCURRENT_REQUESTS', '4'))
     AUTOTHROTTLE_START_DELAY = float(os.getenv('TEST_SCRAPY_AUTOTHROTTLE_START_DELAY', '0.5'))
     AUTOTHROTTLE_MAX_DELAY = float(os.getenv('TEST_SCRAPY_AUTOTHROTTLE_MAX_DELAY', '5.0'))
-    HTTPCACHE_EXPIRATION_SECS = int(os.getenv('TEST_SCRAPY_HTTPCACHE_EXPIRATION_SECS', '1800')) 
+    HTTPCACHE_EXPIRATION_SECS = int(os.getenv('TEST_SCRAPY_HTTPCACHE_EXPIRATION_SECS', '1800'))
+    
+    # Windows test specific settings
+    if sys.platform.startswith('win'):
+        DOWNLOAD_DELAY = float(os.getenv('TEST_SCRAPY_DOWNLOAD_DELAY', '1.0'))
+        CONCURRENT_REQUESTS_PER_DOMAIN = int(os.getenv('TEST_SCRAPY_CONCURRENT_REQUESTS_PER_DOMAIN', '1'))
+        CONCURRENT_REQUESTS = int(os.getenv('TEST_SCRAPY_CONCURRENT_REQUESTS', '2'))
+        AUTOTHROTTLE_START_DELAY = float(os.getenv('TEST_SCRAPY_AUTOTHROTTLE_START_DELAY', '1.0'))
+        AUTOTHROTTLE_MAX_DELAY = float(os.getenv('TEST_SCRAPY_AUTOTHROTTLE_MAX_DELAY', '8.0')) 
