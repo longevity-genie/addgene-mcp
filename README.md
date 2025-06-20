@@ -21,6 +21,10 @@ The Addgene repository contains:
 
 If you want to understand more about what the Model Context Protocol is and how to use it more efficiently, you can take the [DeepLearning AI Course](https://www.deeplearning.ai/short-courses/mcp-build-rich-context-ai-apps-with-anthropic/) or search for MCP videos on YouTube.
 
+## Example Usage
+
+![Example Usage](images/example.jpg)
+
 ## About MCP (Model Context Protocol)
 
 MCP is a protocol that bridges the gap between AI systems and specialized domain knowledge. It enables:
@@ -98,7 +102,7 @@ In cases when there are problems with uvx often they can be caused by cleaning u
 uv cache clean
 ```
 
-The HTTP mode will start a web server that you can access at `http://localhost:3001/mcp` (with documentation at `http://localhost:3001/docs`). The STDIO mode is designed for MCP clients that communicate via standard input/output, while SSE mode uses Server-Sent Events for real-time communication.
+The HTTP mode will start a web server that you can access at `http://localhost:3001/mcp`. The STDIO mode is designed for MCP clients that communicate via standard input/output, while SSE mode uses Server-Sent Events for real-time communication.
 
 **Note:** Currently, we do not have a Swagger/OpenAPI interface, so accessing the server directly in your browser will not show much useful information. To explore the available tools and capabilities, you should either use the MCP Inspector (see below) or connect through an MCP client to see the available tools.
 
@@ -142,6 +146,69 @@ After that you can explore the tools and resources with MCP Inspector at http://
 ### Integration with AI Systems
 
 Simply point your AI client (like Cursor, Windsurf, ClaudeDesktop, VS Code with Copilot, or [others](https://github.com/punkpeye/awesome-mcp-clients)) to use the appropriate configuration file from the repository.
+
+## Copy-Pasteable Configuration for addgene-mcp
+
+Simply copy this JSON configuration to your MCP client (Cursor, Windsurf, Claude Desktop, etc.):
+
+```json
+{
+  "mcpServers": {
+    "addgene-mcp": {
+      "command": "uvx",
+      "args": ["addgene-mcp"],
+      "env": {
+        "MCP_PORT": "3001",
+        "MCP_HOST": "0.0.0.0",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
+```
+
+<details>
+<summary>Alternative configurations (HTTP mode, development deployment)</summary>
+
+### For HTTP mode:
+**File: `mcp-config.json`**
+```json
+{
+  "mcpServers": {
+    "addgene-mcp": {
+      "url": "http://localhost:3001/mcp",
+      "type": "streamable-http",
+      "env": {}
+    }
+  }
+}
+```
+
+### For development deployment (local repository):
+**File: `mcp-config-stdio-local.json`**
+```json
+{
+  "mcpServers": {
+    "addgene-mcp": {
+      "command": "uv",
+      "args": ["run", "addgene-mcp"],
+      "env": {
+        "MCP_PORT": "3001",
+        "MCP_HOST": "0.0.0.0",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
+```
+
+**Configuration Notes:**
+- **`uvx`** - For end-user deployment without cloning the repository
+- **`uv`** - For development deployment when you have the repository cloned
+- **STDIO mode** - Default and recommended for most MCP clients
+- **HTTP mode** - Alternative for clients that prefer HTTP transport
+
+</details>
 
 ## Repository setup
 
@@ -398,6 +465,9 @@ Don't hesitate to open an issue for discussion! We're friendly and always happy 
 
 ## Known Issues
 
+### Windows Compatibility
+The MCP server has not been fully tested on Windows systems. Some users have reported that searches either crash or return no results on Windows. If you encounter issues on Windows, please report them as GitHub issues with details about your Windows version and error messages.
+
 ### Scraping Limitations
 This MCP server relies on web scraping the Addgene website. While we implement respectful scraping practices with appropriate delays and error handling, the server's functionality depends on the current structure of the Addgene website. Changes to the website may require updates to the scraping logic.
 
@@ -440,64 +510,3 @@ and
 [![IBIMA](https://github.com/longevity-genie/biothings-mcp/raw/main/images/IBIMA.jpg)](https://ibima.med.uni-rostock.de/)
 
 [IBIMA - Institute for Biostatistics and Informatics in Medicine and Ageing Research](https://ibima.med.uni-rostock.de/)
-
-## Copy-Pasteable Configurations for addgene-mcp
-
-### For STDIO mode (recommended):
-**File: `mcp-config-stdio.json`**
-```json
-{
-  "mcpServers": {
-    "addgene-mcp": {
-      "command": "uvx",
-      "args": ["addgene-mcp"],
-      "env": {
-        "MCP_PORT": "3001",
-        "MCP_HOST": "0.0.0.0",
-        "MCP_TRANSPORT": "stdio"
-      }
-    }
-  }
-}
-```
-
-### For HTTP mode:
-**File: `mcp-config.json`**
-```json
-{
-  "mcpServers": {
-    "addgene-mcp": {
-      "url": "http://localhost:3001/mcp",
-      "type": "streamable-http",
-      "env": {}
-    }
-  }
-}
-```
-
-### Key improvements from opengenes-mcp approach:
-
-1. **Uses `uvx` instead of `uv run`** - This allows users to run the server without cloning the repository
-2. **Consistent naming** - Server name matches the package name (`addgene-mcp`)
-3. **Simplified HTTP config** - Uses direct URL connection instead of command execution
-4. **Standard environment variables** - Includes proper MCP transport settings
-
-### Alternative config if you want to run from local repository:
-**File: `mcp-config-stdio-local.json`**
-```json
-{
-  "mcpServers": {
-    "addgene-mcp": {
-      "command": "uv",
-      "args": ["run", "addgene-mcp"],
-      "env": {
-        "MCP_PORT": "3001",
-        "MCP_HOST": "0.0.0.0",
-        "MCP_TRANSPORT": "stdio"
-      }
-    }
-  }
-}
-```
-
-The main advantage of the opengenes-mcp approach is that it uses `uvx` which allows users to run the server directly without needing to clone and set up the repository locally - they can just copy the config and it works immediately!
